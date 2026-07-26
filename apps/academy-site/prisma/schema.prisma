@@ -1,0 +1,412 @@
+// Desert Diamond Academy - LMS Database Schema
+// Generated: July 26, 2026
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  passwordHash  String     @map("password_hash")
+  role          UserRole   @default(STUDENT)
+  firstName     String     @map("first_name")
+  lastName      String     @map("last_name")
+  profileImage  String?    @map("profile_image")
+  phoneNumber   String?    @map("phone_number")
+  status        UserStatus @default(PENDING)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  lastLogin     DateTime?  @map("last_login")
+
+  // Relations
+  enrollments        Enrollment[]
+  instructorCourses  Course[]         @relation("InstructorCourses")
+  quizSubmissions    QuizSubmission[]
+  certificates       Certificate[]
+  notifications      Notification[]
+  payments           Payment[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+// ============================================
+// COURSE MANAGEMENT
+// ============================================
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?  @db.Text
+  courses     Course[]
+
+  @@map("categories")
+}
+
+model Course {
+  id               String       @id @default(uuid())
+  title            String
+  slug             String       @unique
+  description      String       @db.Text
+  shortDescription String?      @map("short_description") @db.Text
+  thumbnail        String?
+  price            Decimal      @db.Decimal(10, 2)
+  duration         String // "5 Months", "6 Weeks"
+  startDate        DateTime?    @map("start_date")
+  endDate          DateTime?    @map("end_date")
+  capacity         Int
+  enrolled         Int          @default(0)
+  status           CourseStatus @default(DRAFT)
+  instructorId     String       @map("instructor_id")
+  categoryId       String?      @map("category_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  instructor   User          @relation("InstructorCourses", fields: [instructorId], references: [id])
+  category     Category?     @relation(fields: [categoryId], references: [id])
+  enrollments  Enrollment[]
+  lectures     Lecture[]
+  quizzes      Quiz[]
+  liveClasses  LiveClass[]
+  certificates Certificate[]
+
+  @@map("courses")
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  CANCELLED
+}
+
+// ============================================
+// ENROLLMENT & PROGRESS
+// ============================================
+
+model Enrollment {
+  id                 String           @id @default(uuid())
+  studentId          String           @map("student_id")
+  courseId           String           @map("course_id")
+  status             EnrollmentStatus @default(PENDING)
+  progressPercentage Int              @default(0) @map("progress_percentage")
+  grade              Decimal?         @db.Decimal(5, 2)
+  enrolledAt         DateTime         @default(now()) @map("enrolled_at")
+  completedAt        DateTime?        @map("completed_at")
+
+  // Relations
+  student User   @relation(fields: [studentId], references: [id])
+  course  Course @relation(fields: [courseId], references: [id])
+
+  @@unique([studentId, courseId])
+  @@map("enrollments")
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  DROPPED
+  FAILED
+}
+
+// ============================================
+// CONTENT DELIVERY
+// ============================================
+
+model Lecture {
+  id          String    @id @default(uuid())
+  courseId    String    @map("course_id")
+  title       String
+  description String?   @db.Text
+  content     String    @db.Text
+  videoUrl    String?   @map("video_url")
+  videoType   VideoType @default(YOUTUBE) @map("video_type")
+  order       Int
+  duration    Int? // minutes
+  attachments Json? // Array of file URLs
+  isPublished Boolean   @default(false) @map("is_published")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  course   Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress LectureProgress[]
+
+  @@map("lectures")
+}
+
+enum VideoType {
+  YOUTUBE
+  VIMEO
+  S3
+  EXTERNAL
+}
+
+model LectureProgress {
+  id          String    @id @default(uuid())
+  studentId   String    @map("student_id")
+  lectureId   String    @map("lecture_id")
+  completed   Boolean   @default(false)
+  watchTime   Int       @default(0) @map("watch_time") // seconds watched
+  completedAt DateTime? @map("completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, lectureId])
+  @@map("lecture_progress")
+}
+
+// ============================================
+// ASSESSMENTS
+// ============================================
+
+model Quiz {
+  id              String   @id @default(uuid())
+  courseId        String   @map("course_id")
+  title           String
+  description     String?  @db.Text
+  durationMinutes Int      @map("duration_minutes")
+  passingScore    Decimal  @map("passing_score") @db.Decimal(5, 2)
+  totalPoints     Int      @map("total_points")
+  order           Int
+  dueDate         DateTime? @map("due_date")
+  isPublished     Boolean  @default(false) @map("is_published")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id            String       @id @default(uuid())
+  quizId        String       @map("quiz_id")
+  questionText  String       @map("question_text") @db.Text
+  questionType  QuestionType @map("question_type")
+  points        Int
+  options       Json? // For multiple choice: ["A", "B", "C", "D"]
+  correctAnswer String?      @map("correct_answer") @db.Text
+  explanation   String?      @db.Text
+  order         Int
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_questions")
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
+  FILL_BLANK
+}
+
+model QuizSubmission {
+  id                 String    @id @default(uuid())
+  quizId             String    @map("quiz_id")
+  studentId          String    @map("student_id")
+  answers            Json // Store all answers
+  score              Decimal?  @db.Decimal(5, 2)
+  percentage         Decimal?  @db.Decimal(5, 2)
+  passed             Boolean   @default(false)
+  submittedAt        DateTime  @default(now()) @map("submitted_at")
+  gradedAt           DateTime? @map("graded_at")
+  instructorFeedback String?   @map("instructor_feedback") @db.Text
+
+  // Relations
+  quiz    Quiz @relation(fields: [quizId], references: [id])
+  student User @relation(fields: [studentId], references: [id])
+
+  @@unique([quizId, studentId])
+  @@map("quiz_submissions")
+}
+
+// ============================================
+// LIVE CLASSES
+// ============================================
+
+model LiveClass {
+  id          String          @id @default(uuid())
+  courseId    String          @map("course_id")
+  title       String
+  description String?         @db.Text
+  platform    LivePlatform
+  meetingUrl  String          @map("meeting_url")
+  meetingId   String?         @map("meeting_id")
+  password    String?
+  startTime   DateTime        @map("start_time")
+  endTime     DateTime        @map("end_time")
+  recordingUrl String?        @map("recording_url")
+  status      LiveClassStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  course     Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attendance ClassAttendance[]
+
+  @@map("live_classes")
+}
+
+enum LivePlatform {
+  ZOOM
+  GOOGLE_MEET
+  TEAMS
+}
+
+enum LiveClassStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ClassAttendance {
+  id          String    @id @default(uuid())
+  liveClassId String    @map("live_class_id")
+  studentId   String    @map("student_id")
+  joinedAt    DateTime? @map("joined_at")
+  leftAt      DateTime? @map("left_at")
+  duration    Int? // minutes attended
+
+  // Relations
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+
+  @@unique([liveClassId, studentId])
+  @@map("class_attendance")
+}
+
+// ============================================
+// CERTIFICATES & PAYMENTS
+// ============================================
+
+model Certificate {
+  id                String   @id @default(uuid())
+  studentId         String   @map("student_id")
+  courseId          String   @map("course_id")
+  certificateNumber String   @unique @map("certificate_number")
+  issuedAt          DateTime @default(now()) @map("issued_at")
+  pdfUrl            String   @map("pdf_url")
+  verificationCode  String   @unique @map("verification_code")
+
+  // Relations
+  student User   @relation(fields: [studentId], references: [id])
+  course  Course @relation(fields: [courseId], references: [id])
+
+  @@unique([studentId, courseId])
+  @@map("certificates")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  studentId       String        @map("student_id")
+  courseId        String?       @map("course_id")
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("USD")
+  status          PaymentStatus
+  stripePaymentId String?       @unique @map("stripe_payment_id")
+  stripeInvoiceId String?       @map("stripe_invoice_id")
+  paymentMethod   String?       @map("payment_method")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student User @relation(fields: [studentId], references: [id])
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+// ============================================
+// NOTIFICATIONS & AUDIT
+// ============================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  title     String
+  message   String           @db.Text
+  type      NotificationType
+  isRead    Boolean          @default(false) @map("is_read")
+  link      String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  ENROLLMENT
+  LECTURE_ADDED
+  QUIZ_DUE
+  GRADE_POSTED
+  LIVE_CLASS_REMINDER
+  CERTIFICATE_ISSUED
+  PAYMENT_RECEIVED
+  SYSTEM
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  changes   Json?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}
