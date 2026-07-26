@@ -12,9 +12,9 @@ export default function Footer() {
             <Image
               src={brandAssets.logoPath}
               alt={brandAssets.logoAlt}
-              width={180}
-              height={54}
-              className="h-10 w-auto mb-4"
+              width={200}
+              height={60}
+              className="h-12 w-auto mb-4"
             />
             <p className="text-dd-gray-600 text-sm">{brandAssets.tagline}</p>
           </div>

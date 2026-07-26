@@ -16,10 +16,10 @@ export default function Header() {
             <Image
               src={brandAssets.logoPath}
               alt={brandAssets.logoAlt}
-              width={200}
-              height={60}
+              width={240}
+              height={72}
               priority
-              className="h-12 w-auto"
+              className="h-14 w-auto"
             />
           </Link>
 
