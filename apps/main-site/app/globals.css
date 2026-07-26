@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --dd-gold: #cc9f5e;
+    --dd-blue: #0a26b4;
+    --dd-black: #0b0b0c;
+    --dd-white: #ffffff;
+  }
+
+  body {
+    @apply bg-white text-dd-black antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold;
+  }
+}
+
+@layer components {
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--dd-gold) 0%, var(--dd-blue) 100%);
+  }
+
+  .btn-primary {
+    @apply bg-dd-blue text-white px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all;
+  }
+
+  .btn-secondary {
+    @apply border-2 border-dd-gold text-dd-gold px-6 py-3 rounded-lg font-semibold hover:bg-dd-gold hover:text-white transition-all;
+  }
+}

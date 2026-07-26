@@ -1,0 +1,15 @@
+{
+  "name": "@desertdiamond/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./tokens": "./tokens.ts",
+    "./content": "./content/index.ts",
+    "./content/marketing": "./content/marketing.ts",
+    "./content/programs": "./content/programs.ts",
+    "./content/services": "./content/services.ts"
+  }
+}
