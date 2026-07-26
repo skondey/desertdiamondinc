@@ -3,10 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { brandAssets } from "@desertdiamond/shared/tokens";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   return (
     <header className="bg-white border-b border-dd-gray-200 sticky top-0 z-50">
@@ -46,9 +48,38 @@ export default function Header() {
             >
               Contact
             </Link>
-            <Link href="/contact#register" className="btn-primary">
-              Register Now
-            </Link>
+            
+            {/* Auth Links */}
+            {status === "loading" ? (
+              <div className="h-10 w-24 bg-gray-200 animate-pulse rounded"></div>
+            ) : session ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-dd-black hover:text-dd-blue transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="text-dd-black hover:text-dd-blue transition-colors"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-dd-black hover:text-dd-blue transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link href="/register" className="btn-primary">
+                  Register Now
+                </Link>
+              </>
+            )}
           </nav>
 
           {/* Mobile menu button */}
@@ -114,9 +145,45 @@ export default function Header() {
               >
                 Contact
               </Link>
-              <Link href="/contact#register" className="btn-primary text-center">
-                Register Now
-              </Link>
+              
+              {/* Mobile Auth Links */}
+              {session ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="text-dd-black hover:text-dd-blue transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      signOut({ callbackUrl: "/" });
+                    }}
+                    className="text-left text-dd-black hover:text-dd-blue transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="text-dd-black hover:text-dd-blue transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="btn-primary text-center"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Register Now
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         )}
